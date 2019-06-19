@@ -1,9 +1,12 @@
+use nalgebra::DMatrix;
+use std::collections::HashSet;
+
 // TODO move this to examples
 
 use failure::{Error, format_err};
 use std::path::PathBuf;
 use std::fs::File;
-use std::io::{BufRead, BufReader};
+use std::io::{BufRead, BufReader, Read};
 use structopt::StructOpt;
 
 fn main() -> Result<(), Error> {
@@ -13,86 +16,128 @@ fn main() -> Result<(), Error> {
 
     let f = File::open(opt.filepath)?;
 
-    let records = BufReader::new(f)
-        .lines()
-        .skip(1) //skip header
-        .map(|line| -> Result<Record, Error> { Record::from_tsv_row(&line?) });
-
-    for record in records {
-        println!("{:?}", record);
-    }
+    let mcp = OecMcpMatrix::from_tsv_reader(2017, BufReader::new(f))?;
 
     Ok(())
 }
 
+/// Constructed
+/// - for one year
+/// - on country exports by product
+/// - skipping null exports
+///
+/// matrix:
+/// - row = countries
+/// - columns = products
+///
+/// includes a basic kind-of index
+/// country_index: a vec that you scan down to find index
+/// product_index: a vec that you scan down to find index
+///
 #[derive(Debug)]
-struct Record {
-    year: u32,
-    origin: String,
-    hs92: String,
-    export_val: Option<f64>,
-    import_val: Option<f64>,
-    export_rca: Option<f64>,
-    import_rca: Option<f64>,
+struct OecMcpMatrix {
+    country_index: Vec<String>,
+    product_index: Vec<String>,
+    matrix: DMatrix<f64>,
 }
 
-impl Record {
+impl OecMcpMatrix {
     // TODO add in line numbers for better error handling
-    pub fn from_tsv_row(row_str: &str) -> Result<Self, Error> {
-        let mut cells = row_str.split('\t');
+    // Also, the fields are just hardcoded to the 'year_origin_hs92_4.tsv' file
+    pub fn from_tsv_reader<R: Read>(year: u32, rdr: BufReader<R>) -> Result<Self, Error> {
+        let mut country_set = HashSet::new();
+        let mut product_set = HashSet::new();
+        let mut rows = vec![];
 
-        let year = cells.next()
-            .ok_or_else(|| format_err!("could not find year value"))?
-            .parse::<u32>()?;
-        let origin = cells.next()
-            .ok_or_else(|| format_err!("could not find origin value"))?
-            .to_owned();
-        let hs92 = cells.next()
-            .ok_or_else(|| format_err!("could not find hs92 value"))?
-            .to_owned();
+        // first get rows for the selected year
+        // build country set along the way
+        for row_str in rdr.lines().skip(1) {
+            let row_str = row_str?;
+            let mut cells = row_str.split('\t');
 
-        let export_val = cells.next()
-            .ok_or_else(|| format_err!("could not find export_val value"))?;
-        let export_val = match export_val {
-            "NULL" => None,
-            s => Some(s.parse::<f64>()?)
-        };
+            let current_year = cells.next()
+                .ok_or_else(|| format_err!("could not find year value"))?
+                .parse::<u32>()?;
 
-        let import_val = cells.next()
-            .ok_or_else(|| format_err!("could not find import_val value"))?;
-        let import_val = match import_val {
-            "NULL" => None,
-            s => Some(s.parse::<f64>()?)
-        };
+            if current_year == year {
+                let country = cells.next()
+                    .ok_or_else(|| format_err!("couldn't find country (origin) val"))?
+                    .to_owned()
+                    .clone();
+                let product = cells.next()
+                    .ok_or_else(|| format_err!("couldn't find product (hs92) val"))?
+                    .to_owned()
+                    .clone();
 
-        let export_rca = cells.next()
-            .ok_or_else(|| format_err!("could not find export_rca value"))?;
-        let export_rca = match export_rca {
-            "NULL" => None,
-            s => Some(s.parse::<f64>()?)
-        };
+                let export_val = cells.next()
+                    .ok_or_else(|| format_err!("could not find export_val val"))?;
 
-        let import_rca = cells.next()
-            .ok_or_else(|| format_err!("could not find import_rca value"))?;
-        let import_rca = match import_rca {
-            "NULL" => None,
-            s => Some(s.parse::<f64>()?)
-        };
+                // skip row again if export value is NULL
+                if export_val != "NULL" {
+                    let export = export_val.parse::<f64>()?;
+                    rows.push(Record {
+                        country: country.clone(),
+                        product: product.clone(),
+                        val: export,
+                    });
 
-        Ok(Self {
-            year,
-            origin,
-            hs92,
-            export_val,
-            import_val,
-            export_rca,
-            import_rca,
+                    country_set.insert(country.to_string());
+                    product_set.insert(product.to_string());
+                }
+                // Now skip
+                // - import_val
+                // - export_rca
+                // - import_rca
+                // by not advancing iter
+            }
+        }
+
+        // Now that we have
+        // - the set of countries
+        // - the set of produts
+        // - all rows, filtered for year and export val
+        // we'll directly create the matrix
+        let country_index: Vec<_> = country_set.into_iter().collect();
+        let product_index: Vec<_> = product_set.into_iter().collect();
+
+        let mut matrix = DMatrix::zeros(country_index.len(), product_index.len());
+
+        for row in rows {
+            let matrix_row_idx = country_index
+                .iter()
+                .position(|c| **c == row.country)
+                .expect("Logic error: country missing from index");
+            let matrix_col_idx = product_index
+                .iter()
+                .position(|c| **c == row.product)
+                .expect("Logic error: product missing from index");
+
+            let mut matrix_row = matrix.row_mut(matrix_row_idx);
+            // this could be unchecked
+            matrix_row[matrix_col_idx] = row.val;
+        }
+
+        Ok(OecMcpMatrix {
+            country_index,
+            product_index,
+            matrix,
         })
     }
+}
+
+
+#[derive(Debug)]
+struct Record {
+    country: String,
+    product: String,
+    val: f64,
 }
 
 #[derive(Debug, StructOpt)]
 struct CliOpt {
     #[structopt(parse(from_os_str))]
     filepath: PathBuf,
+
+    #[structopt(long="year")]
+    year: u32,
 }
