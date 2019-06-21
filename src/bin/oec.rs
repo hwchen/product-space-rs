@@ -16,7 +16,10 @@ fn main() -> Result<(), Error> {
 
     let f = File::open(opt.filepath)?;
 
-    let mcp = OecMcpMatrix::from_tsv_reader(2017, BufReader::new(f))?;
+    let mcp = OecMcpMatrix::from_tsv_reader(opt.year, BufReader::new(f))?;
+
+    println!("ago::0106 {:?}", mcp.get_by_country_product("ago", "0106"));
+    println!("bdi::1513 {:?}", mcp.get_by_country_product("bdi", "1513"));
 
     Ok(())
 }
@@ -45,12 +48,16 @@ impl OecMcpMatrix {
     // TODO add in line numbers for better error handling
     // Also, the fields are just hardcoded to the 'year_origin_hs92_4.tsv' file
     pub fn from_tsv_reader<R: Read>(year: u32, rdr: BufReader<R>) -> Result<Self, Error> {
+        // country and product sets are need while building, because some countries
+        // and some products may not exist in each year
+        //
+        // So this is a preprocessing step before putting everything in the matrix
         let mut country_set = HashSet::new();
         let mut product_set = HashSet::new();
         let mut rows = vec![];
 
         // first get rows for the selected year
-        // build country set along the way
+        // build country set and product set along the way
         for row_str in rdr.lines().skip(1) {
             let row_str = row_str?;
             let mut cells = row_str.split('\t');
@@ -122,6 +129,24 @@ impl OecMcpMatrix {
             product_index,
             matrix,
         })
+    }
+
+    pub fn get_by_country_product(&self, country: &str, product: &str) -> Result<f64, Error> {
+        let matrix_row_idx = self.country_index
+            .iter()
+            .position(|c| *c == country)
+            .ok_or_else(|| format_err!("Country {:?} not found", country))?;
+        let matrix_col_idx = self.product_index
+            .iter()
+            .position(|c| *c == product)
+            .ok_or_else(|| format_err!("Product {:?} not found", product))?;
+
+        // these could be unchecked, because the country and product
+        // indexes cannot be larger than matrix dimensions
+        let matrix_row = self.matrix.row(matrix_row_idx);
+        let res = matrix_row[matrix_col_idx];
+
+        Ok(res)
     }
 }
 
