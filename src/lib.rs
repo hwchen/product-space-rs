@@ -42,7 +42,7 @@ pub fn into_rca(m: DMatrix<f64>) -> DMatrix<f64> {
     // c/d
     let mut c_d = c;
     c_d.apply(|x| x / d);
-    dbg!(&c_d);
+    //dbg!(&c_d);
 
     // to get a/b, sweep b across a
     let mut a_b = a;
@@ -50,7 +50,7 @@ pub fn into_rca(m: DMatrix<f64>) -> DMatrix<f64> {
         let mut a_b_row = a_b.row_mut(i);
         a_b_row.apply(|a_val| a_val / b[i]);
     }
-    dbg!(&a_b);
+    //dbg!(&a_b);
 
     // to get (a/b)/(c/d) sweep c_d across a_b
     let mut a_b_c_d = a_b;

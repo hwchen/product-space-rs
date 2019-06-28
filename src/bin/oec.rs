@@ -4,6 +4,7 @@ use std::collections::HashSet;
 // TODO move this to examples
 
 use failure::{Error, format_err};
+use product_space;
 use std::path::PathBuf;
 use std::fs::File;
 use std::io::{BufRead, BufReader, Read};
@@ -18,8 +19,17 @@ fn main() -> Result<(), Error> {
 
     let mcp = OecMcpMatrix::from_tsv_reader(opt.year, BufReader::new(f))?;
 
-    println!("ago::0106 {:?}", mcp.get_by_country_product("ago", "0106"));
-    println!("bdi::1513 {:?}", mcp.get_by_country_product("bdi", "1513"));
+    println!("Export val");
+    println!("ago::0106 {:?}", mcp.get_val_by_country_product("ago", "0106"));
+    println!("bdi::1513 {:?}", mcp.get_val_by_country_product("bdi", "1513"));
+
+    println!("RCA");
+    println!("ago::0106 {:?}", mcp.get_rca_by_country_product("ago", "0106"));
+    println!("bdi::1513 {:?}", mcp.get_rca_by_country_product("bdi", "1513"));
+
+    println!("RCA test against simoes ps_calcs");
+    println!("nzl::0204, expect 149.962669: {:?}", mcp.get_rca_by_country_product("nzl", "0204"));
+    println!("svk::8703, expect 4.441051: {:?}", mcp.get_rca_by_country_product("svk", "8703"));
 
     Ok(())
 }
@@ -41,7 +51,10 @@ fn main() -> Result<(), Error> {
 struct OecMcpMatrix {
     country_index: Vec<String>,
     product_index: Vec<String>,
-    matrix: DMatrix<f64>,
+    // TODO remove, this is just for testing purposes
+    product_matrix: DMatrix<f64>,
+    // TODO remove, this is just for testing purposes
+    rca_matrix: DMatrix<f64>,
 }
 
 impl OecMcpMatrix {
@@ -107,7 +120,7 @@ impl OecMcpMatrix {
         let country_index: Vec<_> = country_set.into_iter().collect();
         let product_index: Vec<_> = product_set.into_iter().collect();
 
-        let mut matrix = DMatrix::zeros(country_index.len(), product_index.len());
+        let mut product_matrix = DMatrix::zeros(country_index.len(), product_index.len());
 
         for row in rows {
             let matrix_row_idx = country_index
@@ -119,31 +132,61 @@ impl OecMcpMatrix {
                 .position(|c| **c == row.product)
                 .expect("Logic error: product missing from index");
 
-            let mut matrix_row = matrix.row_mut(matrix_row_idx);
+            let mut matrix_row = product_matrix.row_mut(matrix_row_idx);
             // this could be unchecked
             matrix_row[matrix_col_idx] = row.val;
         }
 
+        let rca_matrix = product_space::into_rca(product_matrix.clone());
+
         Ok(OecMcpMatrix {
             country_index,
             product_index,
-            matrix,
+            product_matrix,
+            rca_matrix,
         })
     }
 
-    pub fn get_by_country_product(&self, country: &str, product: &str) -> Result<f64, Error> {
-        let matrix_row_idx = self.country_index
+    pub fn get_val_by_country_product(&self, country: &str, product: &str) -> Result<f64, Error> {
+        Self::get_by_country_product(
+            &self.product_matrix,
+            &self.country_index,
+            &self.product_index,
+            country,
+            product,
+        )
+    }
+
+    pub fn get_rca_by_country_product(&self, country: &str, product: &str) -> Result<f64, Error> {
+        Self::get_by_country_product(
+            &self.rca_matrix,
+            &self.country_index,
+            &self.product_index,
+            country,
+            product,
+        )
+    }
+
+    fn get_by_country_product(
+        m: &DMatrix<f64>,
+        country_index: &[String],
+        product_index: &[String],
+        country: &str,
+        product: &str
+        ) -> Result<f64, Error>
+    {
+        let matrix_row_idx = country_index
             .iter()
             .position(|c| *c == country)
             .ok_or_else(|| format_err!("Country {:?} not found", country))?;
-        let matrix_col_idx = self.product_index
+        let matrix_col_idx = product_index
             .iter()
             .position(|c| *c == product)
             .ok_or_else(|| format_err!("Product {:?} not found", product))?;
 
         // these could be unchecked, because the country and product
         // indexes cannot be larger than matrix dimensions
-        let matrix_row = self.matrix.row(matrix_row_idx);
+        let matrix_row = m.row(matrix_row_idx);
         let res = matrix_row[matrix_col_idx];
 
         Ok(res)
