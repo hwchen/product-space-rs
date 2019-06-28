@@ -62,6 +62,14 @@ pub fn into_rca(m: DMatrix<f64>) -> DMatrix<f64> {
     a_b_c_d
 }
 
+pub fn into_fair_share(m: DMatrix<f64>) -> DMatrix<f64> {
+    let mut m = m;
+
+    m.apply(|x| if x >= 1.0 { 1.0 } else { 0.0 });
+
+    m
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

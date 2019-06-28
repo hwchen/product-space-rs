@@ -31,6 +31,12 @@ fn main() -> Result<(), Error> {
     println!("nzl::0204, expect 149.962669: {:?}", mcp.get_rca_by_country_product("nzl", "0204"));
     println!("svk::8703, expect 4.441051: {:?}", mcp.get_rca_by_country_product("svk", "8703"));
 
+    println!("fair share test against simoes ps_calcs");
+    println!("bra::2825, expect 1.0: {:?}", mcp.get_fair_share_by_country_product("bra", "2825"));
+    println!("bra::1521, expect 1.0: {:?}", mcp.get_fair_share_by_country_product("bra", "1521"));
+    println!("bra::1601, expect 1.0: {:?}", mcp.get_fair_share_by_country_product("bra", "1601"));
+    println!("bra::1602, expect 1.0: {:?}", mcp.get_fair_share_by_country_product("bra", "1602"));
+
     Ok(())
 }
 
@@ -55,6 +61,7 @@ struct OecMcpMatrix {
     product_matrix: DMatrix<f64>,
     // TODO remove, this is just for testing purposes
     rca_matrix: DMatrix<f64>,
+    fair_share_matrix: DMatrix<f64>,
 }
 
 impl OecMcpMatrix {
@@ -138,12 +145,14 @@ impl OecMcpMatrix {
         }
 
         let rca_matrix = product_space::into_rca(product_matrix.clone());
+        let fair_share_matrix = product_space::into_fair_share(rca_matrix.clone());
 
         Ok(OecMcpMatrix {
             country_index,
             product_index,
             product_matrix,
             rca_matrix,
+            fair_share_matrix,
         })
     }
 
@@ -160,6 +169,16 @@ impl OecMcpMatrix {
     pub fn get_rca_by_country_product(&self, country: &str, product: &str) -> Result<f64, Error> {
         Self::get_by_country_product(
             &self.rca_matrix,
+            &self.country_index,
+            &self.product_index,
+            country,
+            product,
+        )
+    }
+
+    pub fn get_fair_share_by_country_product(&self, country: &str, product: &str) -> Result<f64, Error> {
+        Self::get_by_country_product(
+            &self.fair_share_matrix,
             &self.country_index,
             &self.product_index,
             country,
