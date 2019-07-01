@@ -11,3 +11,6 @@ pub use proximity::proximity;
 
 mod density;
 pub use density::density;
+
+mod distance;
+pub use distance::distance;
