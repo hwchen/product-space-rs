@@ -14,3 +14,6 @@ pub use density::density;
 
 mod distance;
 pub use distance::distance;
+
+mod complexity;
+pub use complexity::complexity;
