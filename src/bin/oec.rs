@@ -144,8 +144,10 @@ impl OecMcpMatrix {
             matrix_row[matrix_col_idx] = row.val;
         }
 
+        // each allocates for a new matrix
+        // use apply_x if want to do in place
         let rca_matrix = product_space::rca(&product_matrix);
-        let fair_share_matrix = product_space::apply_fair_share(rca_matrix.clone());
+        let fair_share_matrix = product_space::fair_share(&rca_matrix);
 
         Ok(OecMcpMatrix {
             country_index,

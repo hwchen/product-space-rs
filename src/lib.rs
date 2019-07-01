@@ -1,6 +1,8 @@
 mod rca;
 pub use rca::{
     apply_fair_share,
+    apply_rca,
+    fair_share,
     rca,
 };
 

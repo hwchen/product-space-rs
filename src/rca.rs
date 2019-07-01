@@ -63,12 +63,63 @@ pub fn rca(m: &DMatrix<f64>) -> DMatrix<f64> {
     a_b_c_d
 }
 
-pub fn apply_fair_share(m: DMatrix<f64>) -> DMatrix<f64> {
-    let mut m = m;
+// like rca, but in-place
+pub fn apply_rca(m: &mut DMatrix<f64>) {
+    // Implementation:
+    //
+    // The given matrix is already `a`.
+    // `b` is a vector of the sums of cols in each row
+    // `c` is a vector of the sums of rows in each col
+    // `d` is a scalar of the sum of all values in matrix
+
+    // this creates a new matrix to be the basis for the output
+    let a = m;
+
+    // find `b`
+    // the matrix op is col_sum, but it means adding all cols
+    // in a row
+    let b = a.column_sum();
+
+    // find `c`
+    // the matrix op is col_sum, but it means adding all rows
+    // in a col
+    let c = a.row_sum();
+
+    // find `d`
+    let d = a.sum();
+
+    // c/d
+    let mut c_d = c;
+    c_d.apply(|x| x / d);
+    //dbg!(&c_d);
+
+    // to get a/b, sweep b across a
+    let a_b = a;
+    for i in 0..a_b.nrows() {
+        let mut a_b_row = a_b.row_mut(i);
+        a_b_row.apply(|a_val| a_val / b[i]);
+    }
+    //dbg!(&a_b);
+
+    // to get (a/b)/(c/d) sweep c_d across a_b
+    let a_b_c_d = a_b;
+    for i in 0..a_b_c_d.ncols() {
+        let mut a_b_c_d_col = a_b_c_d.column_mut(i);
+        a_b_c_d_col.apply(|a_b_val| a_b_val / c_d[i]);
+    }
+}
+
+pub fn fair_share(m: &DMatrix<f64>) -> DMatrix<f64> {
+    let mut m = (*m).clone();
 
     m.apply(|x| if x >= 1.0 { 1.0 } else { 0.0 });
 
     m
+}
+
+// like fair_share, but in place
+pub fn apply_fair_share(m: &mut DMatrix<f64>) {
+    m.apply(|x| if x >= 1.0 { 1.0 } else { 0.0 });
 }
 
 #[cfg(test)]
@@ -93,5 +144,37 @@ mod tests {
         let expected = DMatrix::from_vec(2,3,vec![0.7777777777777778,1.1666666666666667,1.0,1.0,1.0606060606060606,0.9545454545454545]);
 
         assert_eq!(res, expected);
+    }
+
+    #[test]
+    fn test_apply_rca() {
+        let mut m = DMatrix::from_vec(2,3,vec![1.0, 2.0, 3.0, 4.0, 5.0, 6.0]);
+        apply_rca(&mut m);
+
+        let expected = DMatrix::from_vec(2,3,vec![0.7777777777777778,1.1666666666666667,1.0,1.0,1.0606060606060606,0.9545454545454545]);
+
+        assert_eq!(m, expected);
+    }
+
+    #[test]
+    fn test_fair_share() {
+        let m = DMatrix::from_vec(2,3,vec![0.7777777777777778,1.1666666666666667,1.0,1.0,1.0606060606060606,0.9545454545454545]);
+
+        let res = fair_share(&m);
+
+        let expected = DMatrix::from_vec(2,3,vec![0.0,1.0,1.0,1.0,1.0,0.0]);
+
+        assert_eq!(res, expected);
+    }
+
+    #[test]
+    fn test_apply_fair_share() {
+        let mut m = DMatrix::from_vec(2,3,vec![0.7777777777777778,1.1666666666666667,1.0,1.0,1.0606060606060606,0.9545454545454545]);
+
+        apply_fair_share(&mut m);
+
+        let expected = DMatrix::from_vec(2,3,vec![0.0,1.0,1.0,1.0,1.0,0.0]);
+
+        assert_eq!(m, expected);
     }
 }
