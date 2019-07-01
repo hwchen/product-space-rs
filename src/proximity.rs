@@ -3,7 +3,7 @@ use nalgebra::DMatrix;
 // rca input is matrix of rca, where
 // - col indexes are product
 // - row indexes are countries
-pub fn into_proximity(rca: DMatrix<f64>) -> DMatrix<f64> {
+pub fn proximity(rca: &DMatrix<f64>) -> DMatrix<f64> {
     // first pass: following instructions are from
     // simoes ps_calcs proximity fn using np
     // np notes:
@@ -14,7 +14,7 @@ pub fn into_proximity(rca: DMatrix<f64>) -> DMatrix<f64> {
     let rca_t = rca.transpose();
 
     // product of rca_tranpose and rca transpose transpose
-    let numerator_intersection = rca_t * &rca;
+    let numerator_intersection = rca_t * rca;
 
     // kp0 is vector of the sum of rca per product
     // (simoes says it's vector of the number of munics with RCA in given product,
@@ -39,7 +39,7 @@ pub fn into_proximity(rca: DMatrix<f64>) -> DMatrix<f64> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::into_rca;
+    use crate::rca;
 
     #[test]
     fn test_proximity() {
@@ -48,10 +48,10 @@ mod tests {
         let m = DMatrix::from_vec(2,3,vec![1.0, 2.0, 3.0, 4.0, 5.0, 6.0]);
         println!("matrix:\n{}", m);
 
-        let rca = into_rca(m);
+        let rca = rca(&m);
         println!("rca:\n{}", rca);
 
-        let proximity = into_proximity(rca);
+        let proximity = proximity(&rca);
         println!("proximity:\n{}", proximity);
 
         let expected = DMatrix::from_vec(3,3,

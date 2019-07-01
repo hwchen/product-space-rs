@@ -87,7 +87,7 @@ mod tests {
 
         let m = DMatrix::from_vec(2,3,vec![1.0, 2.0, 3.0, 4.0, 5.0, 6.0]);
         println!("{}", m);
-        let res = into_rca(m);
+        let res = rca(&m);
         println!("{}", res);
 
         let expected = DMatrix::from_vec(2,3,vec![0.7777777777777778,1.1666666666666667,1.0,1.0,1.0606060606060606,0.9545454545454545]);

@@ -4,7 +4,7 @@ use nalgebra::DMatrix;
 // - col indexes are product
 // - row indexes are countries
 // proximity input is calculated from rca, is product x product
-pub fn into_density(rca: DMatrix<f64>, proximity: DMatrix<f64>) -> DMatrix<f64> {
+pub fn density(rca: &DMatrix<f64>, proximity: &DMatrix<f64>) -> DMatrix<f64> {
     // first pass: following instructions are from
     // simoes ps_calcs proximity fn using np
     // np notes:
@@ -12,12 +12,12 @@ pub fn into_density(rca: DMatrix<f64>, proximity: DMatrix<f64>) -> DMatrix<f64> 
     // mul/div is componentwise, not sweeping or otherwise
 
     // numerator is rca multiplied with proximities
-    let density_numerator = &rca * &proximity;
+    let density_numerator = rca * proximity;
 
     // (simoes says denominator by multiplying proximities by all
     // ones vector, getting sum of all proximities
     let rca_ones = rca.map(|_| 1.0);
-    let density_denominator = rca_ones * &proximity;
+    let density_denominator = rca_ones * proximity;
 
     density_numerator.component_div(&density_denominator)
 }
@@ -25,8 +25,8 @@ pub fn into_density(rca: DMatrix<f64>, proximity: DMatrix<f64>) -> DMatrix<f64> 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::into_rca;
-    use crate::into_proximity;
+    use crate::rca;
+    use crate::proximity;
 
     #[test]
     fn test_density() {
@@ -35,13 +35,13 @@ mod tests {
         let m = DMatrix::from_vec(2,3,vec![1.0, 2.0, 3.0, 4.0, 5.0, 6.0]);
         println!("matrix:\n{}", m);
 
-        let rca = into_rca(m);
+        let rca = rca(&m);
         println!("rca:\n{}", rca);
 
-        let proximity = into_proximity(rca.clone());
+        let proximity = proximity(&rca);
         println!("proximity:\n{}", proximity);
 
-        let density = into_density(rca, proximity);
+        let density = density(&rca, &proximity);
         println!("density:\n{}", density);
 
         let expected = DMatrix::from_vec(2,3,
