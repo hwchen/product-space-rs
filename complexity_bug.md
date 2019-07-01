@@ -13,3 +13,8 @@ dtype: float64
 >>> 
 ```
 I've implemented it in a way that matches numpy
+
+Looks like pandas has by default ddof=1, which means that d will be count - 1, which accounts for the difference in result. Manually subtracting one matches simoes `ps_calcs` exactly. Ask simoes which it is.
+
+See: `pandas/core/nanops.py`, lines 581 for `nanstd`, 616 for `nanvar`, 561 for `_get_counts_nanvar`.
+

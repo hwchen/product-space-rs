@@ -83,7 +83,8 @@ fn std(m: &DMatrix<f64>) -> f64 {
     let n = col.len();
     let dev = col.iter()
         .map(|x| ((x - mean).abs()).powf(2.0));
-    let mean_dev = dev.sum::<f64>() / n as f64;
+
+    let mean_dev = dev.sum::<f64>() / (n - 1) as f64;
 
     mean_dev.sqrt()
 }
@@ -106,6 +107,8 @@ mod tests {
         let m = DMatrix::from_vec(4,1,vec![9.365921518323761,9.365168229974921,9.366119246144434,9.366618939884766]);
         let std_dev = std(&m);
         assert_eq!(std_dev, 0.0005215135001035631);
+
+        panic!();
     }
 
     #[test]
