@@ -1,7 +1,7 @@
 mod rca;
 pub use rca::{
-    into_fair_share,
-    into_rca,
+    apply_fair_share,
+    rca,
 };
 
 mod proximity;

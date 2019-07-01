@@ -16,7 +16,7 @@ use nalgebra::DMatrix;
 /// (e.g. jobs to columns, and countries to rows)
 ///
 /// No nulls in matrix; only zero values allowed
-pub fn into_rca(m: DMatrix<f64>) -> DMatrix<f64> {
+pub fn rca(m: &DMatrix<f64>) -> DMatrix<f64> {
     // Implementation:
     //
     // The given matrix is already `a`.
@@ -24,7 +24,8 @@ pub fn into_rca(m: DMatrix<f64>) -> DMatrix<f64> {
     // `c` is a vector of the sums of rows in each col
     // `d` is a scalar of the sum of all values in matrix
 
-    let a = m;
+    // this creates a new matrix to be the basis for the output
+    let a = (*m).clone();
 
     // find `b`
     // the matrix op is col_sum, but it means adding all cols
@@ -62,7 +63,7 @@ pub fn into_rca(m: DMatrix<f64>) -> DMatrix<f64> {
     a_b_c_d
 }
 
-pub fn into_fair_share(m: DMatrix<f64>) -> DMatrix<f64> {
+pub fn apply_fair_share(m: DMatrix<f64>) -> DMatrix<f64> {
     let mut m = m;
 
     m.apply(|x| if x >= 1.0 { 1.0 } else { 0.0 });
