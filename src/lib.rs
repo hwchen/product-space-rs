@@ -6,3 +6,6 @@ pub use rca::{
 
 mod proximity;
 pub use proximity::into_proximity;
+
+mod density;
+pub use density::into_density;

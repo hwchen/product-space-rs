@@ -29,7 +29,6 @@ pub fn into_proximity(rca: DMatrix<f64>) -> DMatrix<f64> {
     // sqrt is for geometric mean)
     let mut denominator_union_sqrt = kp0_t * kp0;
     denominator_union_sqrt.apply(|x| x.sqrt());
-    println!("denom_union_sqrt:\n{}", denominator_union_sqrt);
 
     // componentwise division of numerator/denominator
     let phi = numerator_intersection.component_div(&denominator_union_sqrt);
