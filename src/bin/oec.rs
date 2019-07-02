@@ -5,6 +5,7 @@ use std::collections::HashSet;
 
 use failure::{Error, format_err};
 use product_space;
+use scoped_threadpool::Pool;
 use std::path::PathBuf;
 use std::fs::File;
 use std::io::{BufRead, BufReader, Read};
@@ -38,16 +39,22 @@ fn main() -> Result<(), Error> {
     println!("bra::1601, expect 1.0: {:?}", mcp.get_fair_share_by_country_product("bra", "1601"));
     println!("bra::1602, expect 1.0: {:?}", mcp.get_fair_share_by_country_product("bra", "1602"));
 
-    let start_prox = Instant::now();
-    let proximity = product_space::proximity(&mcp.rca_matrix);
-    let end_prox = start_prox.elapsed();
-    println!(" prox calc time: {}.{:03}", end_prox.as_secs(), end_prox.subsec_millis());
+    let mut pool = Pool::new(1);
+    pool.scoped(|scoped| {
+        for _ in 0..100 {
+            scoped.execute(|| {
+                let start_prox = Instant::now();
+                let proximity = product_space::proximity(&mcp.rca_matrix);
+                let end_prox = start_prox.elapsed();
+                println!(" prox calc time: {}.{:03}", end_prox.as_secs(), end_prox.subsec_millis());
 
-    let start_den = Instant::now();
-    let density = product_space::density(&mcp.rca_matrix, &proximity);
-    let end_den = start_den.elapsed();
-    println!(" density calc time: {}.{:03}", end_den.as_secs(), end_den.subsec_millis());
-
+                let start_den = Instant::now();
+                let density = product_space::density(&mcp.rca_matrix, &proximity);
+                let end_den = start_den.elapsed();
+                println!(" density calc time: {}.{:03}", end_den.as_secs(), end_den.subsec_millis());
+            });
+        }
+    });
 
     Ok(())
 }
