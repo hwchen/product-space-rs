@@ -8,6 +8,7 @@ use product_space;
 use std::path::PathBuf;
 use std::fs::File;
 use std::io::{BufRead, BufReader, Read};
+use std::time::Instant;
 use structopt::StructOpt;
 
 fn main() -> Result<(), Error> {
@@ -37,6 +38,17 @@ fn main() -> Result<(), Error> {
     println!("bra::1601, expect 1.0: {:?}", mcp.get_fair_share_by_country_product("bra", "1601"));
     println!("bra::1602, expect 1.0: {:?}", mcp.get_fair_share_by_country_product("bra", "1602"));
 
+    let start_prox = Instant::now();
+    let proximity = product_space::proximity(&mcp.rca_matrix);
+    let end_prox = start_prox.elapsed();
+    println!(" prox calc time: {}.{:03}", end_prox.as_secs(), end_prox.subsec_millis());
+
+    let start_den = Instant::now();
+    let density = product_space::density(&mcp.rca_matrix, &proximity);
+    let end_den = start_den.elapsed();
+    println!(" density calc time: {}.{:03}", end_den.as_secs(), end_den.subsec_millis());
+
+
     Ok(())
 }
 
@@ -57,16 +69,16 @@ fn main() -> Result<(), Error> {
 struct OecMcpMatrix {
     country_index: Vec<String>,
     product_index: Vec<String>,
-    // TODO remove, this is just for testing purposes
+    // TODO remove, this is  for testing purposes
     product_matrix: DMatrix<f64>,
-    // TODO remove, this is just for testing purposes
+    // TODO remove, this is  for testing purposes
     rca_matrix: DMatrix<f64>,
     fair_share_matrix: DMatrix<f64>,
 }
 
 impl OecMcpMatrix {
     // TODO add in line numbers for better error handling
-    // Also, the fields are just hardcoded to the 'year_origin_hs92_4.tsv' file
+    // Also, the fields are  hardcoded to the 'year_origin_hs92_4.tsv' file
     pub fn from_tsv_reader<R: Read>(year: u32, rdr: BufReader<R>) -> Result<Self, Error> {
         // country and product sets are need while building, because some countries
         // and some products may not exist in each year
@@ -76,6 +88,7 @@ impl OecMcpMatrix {
         let mut product_set = HashSet::new();
         let mut rows = vec![];
 
+        let start_mcp_read = Instant::now();
         // first get rows for the selected year
         // build country set and product set along the way
         for row_str in rdr.lines().skip(1) {
@@ -118,6 +131,10 @@ impl OecMcpMatrix {
                 // by not advancing iter
             }
         }
+        let end_mcp_read = start_mcp_read.elapsed();
+        println!(" mcp read time: {}.{:03}", end_mcp_read.as_secs(), end_mcp_read.subsec_millis());
+
+        let start_mcp = Instant::now();
 
         // Now that we have
         // - the set of countries
@@ -144,9 +161,15 @@ impl OecMcpMatrix {
             matrix_row[matrix_col_idx] = row.val;
         }
 
+        let end_mcp = start_mcp.elapsed();
+        println!(" mcp construct time: {}.{:03}", end_mcp.as_secs(), end_mcp.subsec_millis());
+
         // each allocates for a new matrix
         // use apply_x if want to do in place
+        let start_rca = Instant::now();
         let rca_matrix = product_space::rca(&product_matrix);
+        let end_rca = start_rca.elapsed();
+        println!(" rca calc time: {}.{:03}", end_rca.as_secs(), end_rca.subsec_millis());
         let fair_share_matrix = product_space::fair_share(&rca_matrix);
 
         Ok(OecMcpMatrix {
