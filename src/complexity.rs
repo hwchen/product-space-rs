@@ -38,11 +38,11 @@ pub fn complexity(rca: &DMatrix<f64>) -> (DMatrix<f64>, DMatrix<f64>) {
     println!("kc: {}", kc);
 
     let kc_mean = mean(&convert(kc.clone()));
-    let kc_std = std(&convert(kc.clone()));
+    let kc_std = std(&convert(kc.clone()), None);
     let mut geo_complexity = kc;
 
     let kp_mean = mean(&convert(kp.clone()));
-    let kp_std = std(&convert(kp.clone()));
+    let kp_std = std(&convert(kp.clone()), None);
     let mut prod_complexity = kp;
 
     println!("kp_mean: {}", kp_mean);
@@ -70,7 +70,13 @@ fn mean(m: &DMatrix<f64>) -> f64 {
 // only for <U1, Dynamic> vectors
 // This is just temp, until I find a lib or something to calculate
 // std deviation
-fn std(m: &DMatrix<f64>) -> f64 {
+//
+// ddof is delta degrees of freedom. In pandas, the default is 1,
+// in numpy, it's 0. In order to be the same as ps_calcs, which
+// use pandas, I set the default as 1 for the complexity calc.
+// It's not broken out into a param for the moment.
+// See notes in `complexity_bug.md`
+fn std(m: &DMatrix<f64>, ddof: Option<u32>) -> f64 {
     // The standard deviation is the square root of the
     // average of the squared deviations from the mean, i.e.,
     // `std = sqrt(mean(abs(x - x.mean())**2))`.
@@ -84,9 +90,11 @@ fn std(m: &DMatrix<f64>) -> f64 {
     let dev = col.iter()
         .map(|x| ((x - mean).abs()).powf(2.0));
 
-    let mean_dev = dev.sum::<f64>() / (n - 1) as f64;
+    let ddof = ddof.unwrap_or(1);
+    let d = n as u32 - ddof;
+    let variance = dev.sum::<f64>() / d as f64;
 
-    mean_dev.sqrt()
+    variance.sqrt()
 }
 
 #[cfg(test)]
@@ -95,20 +103,25 @@ mod tests {
     use crate::rca;
 
     #[test]
-    fn test_std() {
+    fn test_std_ddof0() {
         let m = DMatrix::from_vec(3,1,vec![1.0, 3.0, 5.0]);
-        let std_dev = std(&m);
+        let std_dev = std(&m, Some(0));
         assert_eq!(std_dev, 1.632993161855452);
 
         let m = DMatrix::from_vec(3,1,vec![1.0, 3.0, 6.0]);
-        let std_dev = std(&m);
+        let std_dev = std(&m, Some(0));
         assert_eq!(std_dev, 2.0548046676563256);
 
         let m = DMatrix::from_vec(4,1,vec![9.365921518323761,9.365168229974921,9.366119246144434,9.366618939884766]);
-        let std_dev = std(&m);
+        let std_dev = std(&m, Some(0));
         assert_eq!(std_dev, 0.0005215135001035631);
+    }
 
-        panic!();
+    #[test]
+    fn test_std_ddof1() {
+        let m = DMatrix::from_vec(4,1,vec![9.365921518323761,9.365168229974921,9.366119246144434,9.366618939884766]);
+        let std_dev = std(&m, None);
+        assert_eq!(std_dev, 0.0006021919193416322);
     }
 
     #[test]
@@ -127,17 +140,18 @@ mod tests {
 
         let expected_geo= DMatrix::from_vec(2,1,
             vec![
-                0.0,
-                -1.0,
+                0.7071067811857505,
+                -0.7071067811873445,
             ]
         );
         println!("expected_geo:\n{}", expected_geo);
 
-        let expected_product= DMatrix::from_vec(3,1,
+        let expected_product= DMatrix::from_vec(4,1,
             vec![
-                0.0,
-                1.414214,
-                0.0,
+                -0.058893613597594,
+                -1.3098043691969639,
+                0.2694532378334895,
+                1.0992447449640181,
             ]
         );
         println!("expected_product:\n{}", expected_product);

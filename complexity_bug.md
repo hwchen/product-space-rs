@@ -18,3 +18,5 @@ Looks like pandas has by default ddof=1, which means that d will be count - 1 wh
 
 See: `pandas/core/nanops.py`, lines 581 for `nanstd`, 616 for `nanvar`, 561 for `_get_counts_nanvar`.
 
+Comment from Cesar:
+> The std part of the normalization does not change any of the properties of the indicator (it is a constant factor in a relative metric), so this is not a biggy. By convention, we want the standard deviation of the resulting values to be equal to 1.
