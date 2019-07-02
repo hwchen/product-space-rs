@@ -5,9 +5,9 @@
 - proximity
 - density
 - distance
+- complexity (returns geo and product complexity)
 
 ## TODO:
-- complexity (returns geo and product complexity)
 - opportunity gain (requires pci from complexity (product complexity))
 - mhat (requires stats module)
 - rca confidence (requires stats module)
