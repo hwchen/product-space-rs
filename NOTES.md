@@ -16,3 +16,7 @@ Also, in terms of utilization, in a threadpool I can run full throttle 4 cores, 
 Related to the RCA 1.5, this was a threshold that we use for some calculations (as cesar mentioned in the oec channel) where we will use a binary variable of < 1.5 = 0 and >= 1.5 = 1 (meaning you have rca for that product or you dont). And typically we use 1.0 as the cutoff though sometime we want to try other thresholds to see how the results vary.
 
 For the calculations, the aggregation at every step would be about better. But we can optimize by doing a few ones. For instance, proximity can be noisy, so taking the average of the three previous years would help. RCA is noisy too, so using RCA>1 in three previous years is a good backwards condition. With those two, density would be a bit less noisy
+
+Thanks! We denoise more if we do it for 1 year, for each of the previous 3 years, and then do the aggregations. That is RCA=1 if RCA(t) & RCA(t-1) & RCA(t-2) > 1 (we say a country has comparative advantage if it is observed for three consecutive years). Similarly Phi(p,p’) is average of three previous years. Thanks!
+
+ok, I think that makes sense. So for rca and proximities I'll do the calculation all the way through for each year, and then aggregate, and then those will feed into density.
