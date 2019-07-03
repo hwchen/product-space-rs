@@ -164,7 +164,7 @@ mod tests {
     fn test_fair_share() {
         let m = DMatrix::from_vec(2,3,vec![0.7777777777777778,1.1666666666666667,1.0,1.0,1.0606060606060606,0.9545454545454545]);
 
-        let res = fair_share(&m);
+        let res = fair_share(&m, None);
 
         let expected = DMatrix::from_vec(2,3,vec![0.0,1.0,1.0,1.0,1.0,0.0]);
 
@@ -175,7 +175,7 @@ mod tests {
     fn test_apply_fair_share() {
         let mut m = DMatrix::from_vec(2,3,vec![0.7777777777777778,1.1666666666666667,1.0,1.0,1.0606060606060606,0.9545454545454545]);
 
-        apply_fair_share(&mut m);
+        apply_fair_share(&mut m, None);
 
         let expected = DMatrix::from_vec(2,3,vec![0.0,1.0,1.0,1.0,1.0,0.0]);
 

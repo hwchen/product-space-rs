@@ -1,6 +1,9 @@
 use nalgebra::DMatrix;
 use std::collections::HashMap;
 
+mod mcp;
+pub use mcp::Mcp;
+
 mod rca;
 pub use rca::{
     apply_fair_share,
@@ -27,8 +30,8 @@ pub use error::Error;
 // Currently just country and product.
 // May make this more general in the future
 pub struct ProductSpace {
-    country_index: Vec<String>,
-    product_index: Vec<String>,
+    country_idx: Vec<String>,
+    product_idx: Vec<String>,
     mcps: HashMap<u32, DMatrix<f64>>,
 }
 
@@ -36,14 +39,14 @@ impl ProductSpace {
     // TODO Result and error handling for year range mistakes
     pub fn rca(
         &self,
-        cutoff: Option<f64>,
         years: &[u32],
+        cutoff: Option<f64>,
         ) -> Option<Rca>
     {
         let year_count = years.len();
 
         if year_count > 1 {
-            let zeros = DMatrix::zeros(self.country_index.len(), self.product_index.len());
+            let zeros = DMatrix::zeros(self.country_idx.len(), self.product_idx.len());
             let agg_mcp = years.iter()
                 // in future, should return error if
                 // year not present? Or maybe not
@@ -55,9 +58,9 @@ impl ProductSpace {
                 &mut apply_fair_share(&mut res, cutoff);
             }
             Some(Rca {
-                country_index: self.country_index.clone(),
-                product_index: self.product_index.clone(),
-                matrix: res,
+                country_idx: self.country_idx.clone(),
+                product_idx: self.product_idx.clone(),
+                m: res,
             })
         } else if year_count == 1 {
             // no extra allocation for mcp
@@ -70,9 +73,9 @@ impl ProductSpace {
                         &mut apply_fair_share(&mut res, cutoff);
                     }
                     Rca {
-                        country_index: self.country_index.clone(),
-                        product_index: self.product_index.clone(),
-                        matrix: res,
+                        country_idx: self.country_idx.clone(),
+                        product_idx: self.product_idx.clone(),
+                        m: res,
                     }
                 })
         } else {
@@ -83,72 +86,50 @@ impl ProductSpace {
 
 // TODO put indexes in Arc to avoid copying?
 pub struct Rca {
-    country_index: Vec<String>,
-    product_index: Vec<String>,
-    matrix: DMatrix<f64>,
+    country_idx: Vec<String>,
+    product_idx: Vec<String>,
+    m: DMatrix<f64>,
 }
 
-impl Rca {
-    pub fn get_value(&self, country: &str, product: &str) -> Result<f64, Error> {
-        get_by_country_product(
-            &self.matrix,
-            &self.country_index,
-            &self.product_index,
-            country,
-            product,
-        )
+impl Mcp for Rca {
+    fn matrix(&self) -> &DMatrix<f64> {
+        &self.m
     }
-
-    pub fn get_country(&self, country: &str) -> Result<Vec<f64>, Error> {
-        get_by_country(
-            &self.matrix,
-            &self.country_index,
-            country,
-        )
+    fn country_index(&self) -> &[String] {
+        &self.country_idx
+    }
+    fn product_index(&self) -> &[String] {
+        &self.product_idx
     }
 }
 
-// TODO: put in util module?
-fn get_by_country_product(
-    m: &DMatrix<f64>,
-    country_index: &[String],
-    product_index: &[String],
-    country: &str,
-    product: &str,
-    ) -> Result<f64, Error>
-{
-    let matrix_row_idx = country_index
-        .iter()
-        .position(|c| *c == country)
-        .ok_or_else(|| Error::MissingIndex { member: country.into(), index: "country".into() })?;
-    let matrix_col_idx = product_index
-        .iter()
-        .position(|c| *c == product)
-        .ok_or_else(|| Error::MissingIndex { member: product.into(), index: "product".into() })?;
+#[cfg(test)]
+mod test {
+    use std::collections::HashMap;
+    use super::*;
 
-    // these could be unchecked, because the country and product
-    // indexes cannot be larger than matrix dimensions
-    let matrix_row = m.row(matrix_row_idx);
-    let res = matrix_row[matrix_col_idx];
+    #[test]
+    fn test_ps_interface() {
+        let vals = DMatrix::from_vec(2,3,vec![1.0,2.0,3.0,4.0,5.0,6.0]);
+        let mut mcps = HashMap::new();
+        mcps.insert(2017, vals);
 
-    Ok(res)
-}
+        let ps = ProductSpace {
+            country_idx: vec!["a".into(), "b".into()],
+            product_idx: vec!["01".into(), "02".into(), "03".into()],
+            mcps,
+        };
 
-// TODO: put in util module?
-fn get_by_country(
-    m: &DMatrix<f64>,
-    country_index: &[String],
-    country: &str,
-    ) -> Result<Vec<f64>, Error>
-{
-    let matrix_row_idx = country_index
-        .iter()
-        .position(|c| *c == country)
-        .ok_or_else(|| Error::MissingIndex { member: country.into(), index: "country".into() })?;
+        let rca = ps.rca(&[2017], None).unwrap();
 
-    // these could be unchecked, because the country and product
-    // indexes cannot be larger than matrix dimensions
-    let matrix_row = m.row(matrix_row_idx);
+        let expected = DMatrix::from_vec(2,3,vec![0.7777777777777778,1.1666666666666667,1.0,1.0,1.0606060606060606,0.9545454545454545]);
 
-    Ok(matrix_row.iter().cloned().collect())
+        assert_eq!(rca.m, expected);
+
+        let val = rca.get("a", "01").unwrap();
+        assert_eq!(val, 0.7777777777777778);
+
+        let vals = rca.get_country("b").unwrap();
+        assert_eq!(vals, vec![1.1666666666666667, 1.0, 0.9545454545454545]);
+    }
 }
