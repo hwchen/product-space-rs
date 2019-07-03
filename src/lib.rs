@@ -48,7 +48,9 @@ impl ProductSpace {
                 .fold(zeros, |sum, x| sum + x);
 
             let mut res = rca(&agg_mcp);
-            &mut apply_fair_share(&mut res, cutoff);
+            if cutoff.is_some() {
+                &mut apply_fair_share(&mut res, cutoff);
+            }
             Some(res)
         } else if year_count == 1 {
             // no extra allocation for mcp
@@ -57,7 +59,9 @@ impl ProductSpace {
                 .and_then(|y| self.mcps.get(y))
                 .map(|mcp| {
                     let mut res = rca(&mcp);
-                    &mut apply_fair_share(&mut res, cutoff);
+                    if cutoff.is_some() {
+                        &mut apply_fair_share(&mut res, cutoff);
+                    }
                     res
                 })
         } else {
