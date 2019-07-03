@@ -7,8 +7,8 @@ edition = "2018"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-structopt = "0.2.16"
-failure = "0.1.5"
 nalgebra = "0.18.0"
-num = "0.2.0"
-na = "0.18.2"
+
+[dev-dependencies]
+failure = "0.1.5"
+structopt = "0.2.16"
