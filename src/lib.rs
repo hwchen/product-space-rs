@@ -33,9 +33,9 @@ impl ProductSpace {
     // TODO Result and error handling for year range mistakes
     pub fn rca(
         &self,
-        _cutoff: f64,
+        cutoff: Option<f64>,
         years: &[u32],
-        ) -> DMatrix<f64>
+        ) -> Option<DMatrix<f64>>
     {
         let year_count = years.len();
 
@@ -43,20 +43,25 @@ impl ProductSpace {
             let zeros = DMatrix::zeros(self.country_index.len(), self.product_index.len());
             let agg_mcp = years.iter()
                 // in future, should return error if
-                // year not present
+                // year not present? Or maybe not
                 .filter_map(|y| self.mcps.get(&y))
                 .fold(zeros, |sum, x| sum + x);
 
-            rca(&agg_mcp)
+            let mut res = rca(&agg_mcp);
+            &mut apply_fair_share(&mut res, cutoff);
+            Some(res)
         } else if year_count == 1 {
             // no extra allocation for mcp
 
-            let y = years[0];
-            let mcp = self.mcps.get(&y).expect("get rid of this panic");
-
-            rca(&mcp)
+            years.get(0)
+                .and_then(|y| self.mcps.get(y))
+                .map(|mcp| {
+                    let mut res = rca(&mcp);
+                    &mut apply_fair_share(&mut res, cutoff);
+                    res
+                })
         } else {
-            DMatrix::zeros(1,1)
+            None
         }
     }
 }

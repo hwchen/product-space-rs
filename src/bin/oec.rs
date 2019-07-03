@@ -147,7 +147,7 @@ impl OecMcpMatrix {
         // each allocates for a new matrix
         // use apply_x if want to do in place
         let rca_matrix = product_space::rca(&product_matrix);
-        let fair_share_matrix = product_space::fair_share(&rca_matrix);
+        let fair_share_matrix = product_space::fair_share(&rca_matrix, None);
 
         Ok(OecMcpMatrix {
             country_index,

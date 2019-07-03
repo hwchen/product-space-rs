@@ -109,17 +109,21 @@ pub fn apply_rca(m: &mut DMatrix<f64>) {
     }
 }
 
-pub fn fair_share(m: &DMatrix<f64>) -> DMatrix<f64> {
+pub fn fair_share(m: &DMatrix<f64>, cutoff: Option<f64>) -> DMatrix<f64> {
+    let cutoff = cutoff.unwrap_or(1.0);
+
     let mut m = (*m).clone();
 
-    m.apply(|x| if x >= 1.0 { 1.0 } else { 0.0 });
+    m.apply(|x| if x >= cutoff { 1.0 } else { 0.0 });
 
     m
 }
 
 // like fair_share, but in place
-pub fn apply_fair_share(m: &mut DMatrix<f64>) {
-    m.apply(|x| if x >= 1.0 { 1.0 } else { 0.0 });
+pub fn apply_fair_share(m: &mut DMatrix<f64>, cutoff: Option<f64>) {
+    let cutoff = cutoff.unwrap_or(1.0);
+
+    m.apply(|x| if x >= cutoff { 1.0 } else { 0.0 });
 }
 
 #[cfg(test)]
