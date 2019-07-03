@@ -1,11 +1,12 @@
 use csv;
-use failure::Error;
+use failure::{Error, format_err};
 use nalgebra::DMatrix;
-use product_space::{self, ProductSpace};
+use product_space::{self, ProductSpace, Mcp};
 use serde::Deserialize;
 use std::collections::{HashMap, HashSet};
 use std::path::PathBuf;
 use std::fs::File;
+use std::time::Instant;
 use structopt::StructOpt;
 
 fn main() -> Result<(), Error> {
@@ -14,7 +15,26 @@ fn main() -> Result<(), Error> {
     println!("Reading data from: {:?}", opt.filepath);
 
 
-    let _ps = ps_from_tsv_reader(opt.filepath)?;
+    let start_ingest = Instant::now();
+    let ps = ps_from_tsv_reader(opt.filepath)?;
+    let end_ingest = start_ingest.elapsed();
+    println!("ingest time: {}.{:03}",
+        end_ingest.as_secs(),
+        end_ingest.subsec_millis()
+    );
+
+    let start_rca = Instant::now();
+    {
+        let rca = ps.rca(&[2017], None)
+            .ok_or_else(|| format_err!("no rca for 2017?"))?;
+        println!("RCA test against simoes ps_calcs");
+        println!("nzl::0204, expect 149.962669: {:?}", rca.get("nzl", "0204")?);
+    }
+    let end_rca = start_rca.elapsed();
+    println!("rca time: {}.{:03}",
+        end_rca.as_secs(),
+        end_rca.subsec_millis()
+    );
 
     Ok(())
 }
