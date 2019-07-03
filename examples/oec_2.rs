@@ -23,18 +23,42 @@ fn main() -> Result<(), Error> {
         end_ingest.subsec_millis()
     );
 
+    println!("");
+
     let start_rca = Instant::now();
     {
         let rca = ps.rca(&[2017], None)
             .ok_or_else(|| format_err!("no rca for 2017?"))?;
-        println!("RCA test against simoes ps_calcs");
+        println!("RCA test against simoes ps_calcs for 2017");
         println!("nzl::0204, expect 149.962669: {:?}", rca.get("nzl", "0204")?);
     }
     let end_rca = start_rca.elapsed();
-    println!("rca time: {}.{:03}",
+    println!("time: {}.{:03}",
         end_rca.as_secs(),
         end_rca.subsec_millis()
     );
+
+    println!("");
+
+    let start_rca = Instant::now();
+    {
+        let rca = ps.rca(&[2015,2016,2017], None)
+            .ok_or_else(|| format_err!("no rca for 2015-2017?"))?;
+        println!("nzl::0204, 2015-2017: {}", rca.get("nzl", "0204")?);
+    }
+    let end_rca = start_rca.elapsed();
+    println!("time: {}.{:03}",
+        end_rca.as_secs(),
+        end_rca.subsec_millis()
+    );
+
+    println!("");
+
+    for year in 2015..=2017 {
+        let rca = ps.rca(&[year as u32], None)
+            .ok_or_else(|| format_err!("no rca for year"))?;
+        println!("nzl::0204, {}: {}", year, rca.get("nzl", "0204")?);
+    }
 
     Ok(())
 }
