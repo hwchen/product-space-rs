@@ -99,15 +99,13 @@ impl Rca {
         )
     }
 
-//    pub fn get_country(&self, country: &str, product: &str) -> Result<f64, Error> {
-//        get_by_country(
-//            &self.matrix,
-//            &self.country_index,
-//            &self.product_index,
-//            country,
-//            product,
-//        )
-//    }
+    pub fn get_country(&self, country: &str) -> Result<Vec<f64>, Error> {
+        get_by_country(
+            &self.matrix,
+            &self.country_index,
+            country,
+        )
+    }
 }
 
 // TODO: put in util module?
@@ -116,7 +114,7 @@ fn get_by_country_product(
     country_index: &[String],
     product_index: &[String],
     country: &str,
-    product: &str
+    product: &str,
     ) -> Result<f64, Error>
 {
     let matrix_row_idx = country_index
@@ -134,4 +132,23 @@ fn get_by_country_product(
     let res = matrix_row[matrix_col_idx];
 
     Ok(res)
+}
+
+// TODO: put in util module?
+fn get_by_country(
+    m: &DMatrix<f64>,
+    country_index: &[String],
+    country: &str,
+    ) -> Result<Vec<f64>, Error>
+{
+    let matrix_row_idx = country_index
+        .iter()
+        .position(|c| *c == country)
+        .ok_or_else(|| Error::MissingIndex { member: country.into(), index: "country".into() })?;
+
+    // these could be unchecked, because the country and product
+    // indexes cannot be larger than matrix dimensions
+    let matrix_row = m.row(matrix_row_idx);
+
+    Ok(matrix_row.iter().cloned().collect())
 }
