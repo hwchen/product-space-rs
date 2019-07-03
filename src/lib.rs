@@ -84,6 +84,16 @@ impl ProductSpace {
     }
 }
 
+impl ProductSpace {
+    pub fn new(country_idx: Vec<String>, product_idx: Vec<String>, mcps: HashMap<u32, DMatrix<f64>>) -> Self {
+        Self {
+            country_idx,
+            product_idx,
+            mcps,
+        }
+    }
+}
+
 // TODO put indexes in Arc to avoid copying?
 pub struct Rca {
     country_idx: Vec<String>,
