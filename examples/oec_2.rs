@@ -138,19 +138,6 @@ pub fn ps_from_tsv_reader(filepath: PathBuf) -> Result<ProductSpace, Error> {
         }
     }
 
-    // TODO change indexes in lib?
-    let mut country_idx = country_idx.iter().collect::<Vec<_>>();
-    country_idx.sort_by_key(|&(_country, idx)| idx);
-    let country_idx = country_idx.iter()
-        .map(|(c, _)| c.to_string())
-        .collect::<Vec<_>>();
-
-    let mut product_idx = product_idx.iter().collect::<Vec<_>>();
-    product_idx.sort_by_key(|&(_product, idx)| idx);
-    let product_idx = product_idx.iter()
-        .map(|(p, _)| p.to_string())
-        .collect::<Vec<_>>();
-
     Ok(product_space::ProductSpace::new(
         country_idx,
         product_idx,

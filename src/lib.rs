@@ -30,8 +30,8 @@ pub use error::Error;
 // Currently just country and product.
 // May make this more general in the future
 pub struct ProductSpace {
-    country_idx: Vec<String>,
-    product_idx: Vec<String>,
+    country_idx: HashMap<String, usize>,
+    product_idx: HashMap<String, usize>,
     mcps: HashMap<u32, DMatrix<f64>>,
 }
 
@@ -85,7 +85,7 @@ impl ProductSpace {
 }
 
 impl ProductSpace {
-    pub fn new(country_idx: Vec<String>, product_idx: Vec<String>, mcps: HashMap<u32, DMatrix<f64>>) -> Self {
+    pub fn new(country_idx: HashMap<String, usize>, product_idx: HashMap<String, usize>, mcps: HashMap<u32, DMatrix<f64>>) -> Self {
         Self {
             country_idx,
             product_idx,
@@ -96,8 +96,8 @@ impl ProductSpace {
 
 // TODO put indexes in Arc to avoid copying?
 pub struct Rca {
-    country_idx: Vec<String>,
-    product_idx: Vec<String>,
+    country_idx: HashMap<String, usize>,
+    product_idx: HashMap<String, usize>,
     m: DMatrix<f64>,
 }
 
@@ -105,10 +105,10 @@ impl Mcp for Rca {
     fn matrix(&self) -> &DMatrix<f64> {
         &self.m
     }
-    fn country_index(&self) -> &[String] {
+    fn country_index(&self) -> &HashMap<String, usize> {
         &self.country_idx
     }
-    fn product_index(&self) -> &[String] {
+    fn product_index(&self) -> &HashMap<String, usize> {
         &self.product_idx
     }
 }
