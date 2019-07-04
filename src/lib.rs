@@ -47,7 +47,7 @@ impl ProductSpace {
         cutoff: Option<f64>,
         ) -> Option<Rca>
     {
-        if years.len() > 0 {
+        if years.len() > 1 {
             let zeros = DMatrix::from_element(
                 self.country_idx.len(),
                 self.product_idx.len(),
@@ -84,7 +84,6 @@ impl ProductSpace {
             })
         } else if years.len() == 1 {
             // no extra allocation for mcp
-
             years.get(0)
                 .and_then(|y| self.mcps.get(y))
                 .map(|mcp| {
