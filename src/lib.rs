@@ -145,8 +145,8 @@ mod test {
         mcps.insert(2017, vals);
 
         let ps = ProductSpace {
-            country_idx: vec!["a".into(), "b".into()],
-            product_idx: vec!["01".into(), "02".into(), "03".into()],
+            country_idx: [("a".to_string(),0usize), ("b".to_string(),1)].iter().cloned().collect(),
+            product_idx: [("01".to_string(),0usize), ("02".to_string(),1), ("03".to_string(),2)].iter().cloned().collect(),
             mcps,
         };
 
