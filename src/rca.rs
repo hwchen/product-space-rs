@@ -127,6 +127,8 @@ pub fn apply_fair_share(m: &mut DMatrix<f64>, cutoff: Option<f64>) {
 }
 
 // like fair_share, but in place
+/// This one does the cutoff for the first matrix, then multiplies
+/// it into the second
 pub fn apply_fair_share_into(m1: &mut DMatrix<f64>, into_m: &mut DMatrix<f64>, cutoff: Option<f64>) {
     let cutoff = cutoff.unwrap_or(1.0);
 
@@ -188,5 +190,22 @@ mod tests {
         let expected = DMatrix::from_vec(2,3,vec![0.0,1.0,1.0,1.0,1.0,0.0]);
 
         assert_eq!(m, expected);
+    }
+
+    #[test]
+    fn test_apply_fair_share_into() {
+        let mut m0 = DMatrix::from_element(4,2,1.0);
+
+        let mut m1 = DMatrix::from_vec(4,2,vec![0.5,0.5,0.5,0.5,1.5,1.5,1.5,1.5]);
+        let mut m2 = DMatrix::from_vec(4,2,vec![0.5,0.5,1.5,1.5,0.5,0.5,1.5,1.5]);
+        let mut m3 = DMatrix::from_vec(4,2,vec![0.5,1.5,0.5,1.5,0.5,1.5,0.5,1.5]);
+
+        apply_fair_share_into(&mut m1, &mut m0, Some(1.0));
+        apply_fair_share_into(&mut m2, &mut m0, Some(1.0));
+        apply_fair_share_into(&mut m3, &mut m0, Some(1.0));
+
+        let expected = DMatrix::from_vec(4,2,vec![0.0,0.0,0.0,0.0,0.0,0.0,0.0,1.0]);
+
+        assert_eq!(m0, expected);
     }
 }
