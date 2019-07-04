@@ -47,6 +47,22 @@ impl ProductSpace {
         cutoff: Option<f64>,
         ) -> Option<Rca>
     {
+        self.rca_matrix(years, cutoff)
+            .map(|m| {
+                Rca {
+                    country_idx: self.country_idx.clone(),
+                    product_idx: self.product_idx.clone(),
+                    m,
+                }
+            })
+    }
+
+    fn rca_matrix(
+        &self,
+        years: &[u32],
+        cutoff: Option<f64>,
+        ) -> Option<DMatrix<f64>>
+    {
         if years.len() > 1 {
             let zeros = DMatrix::from_element(
                 self.country_idx.len(),
@@ -77,11 +93,7 @@ impl ProductSpace {
                 res.apply(|x| x / years.len() as f64)
             }
 
-            Some(Rca {
-                country_idx: self.country_idx.clone(),
-                product_idx: self.product_idx.clone(),
-                m: res,
-            })
+            Some(res)
         } else if years.len() == 1 {
             // no extra allocation for mcp
             years.get(0)
@@ -91,11 +103,7 @@ impl ProductSpace {
                     if cutoff.is_some() {
                         apply_fair_share(&mut res, cutoff);
                     }
-                    Rca {
-                        country_idx: self.country_idx.clone(),
-                        product_idx: self.product_idx.clone(),
-                        m: res,
-                    }
+                    res
                 })
         } else {
             None
