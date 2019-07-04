@@ -126,6 +126,14 @@ pub fn apply_fair_share(m: &mut DMatrix<f64>, cutoff: Option<f64>) {
     m.apply(|x| if x >= cutoff { 1.0 } else { 0.0 });
 }
 
+// like fair_share, but in place
+pub fn apply_fair_share_into(m1: &mut DMatrix<f64>, into_m: &mut DMatrix<f64>, cutoff: Option<f64>) {
+    let cutoff = cutoff.unwrap_or(1.0);
+
+    m1.apply(|x| if x >= cutoff { 1.0 } else { 0.0 });
+    into_m.component_mul_assign(m1);
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

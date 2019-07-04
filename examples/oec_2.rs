@@ -3,10 +3,10 @@ use failure::{Error, format_err};
 use nalgebra::DMatrix;
 use product_space::{self, ProductSpace, Mcp};
 use serde::Deserialize;
+use simple_timer::timeit;
 use std::collections::{HashMap, HashSet};
 use std::path::PathBuf;
 use std::fs::File;
-use std::time::Instant;
 use structopt::StructOpt;
 
 fn main() -> Result<(), Error> {
@@ -15,41 +15,39 @@ fn main() -> Result<(), Error> {
     println!("Reading data from: {:?}", opt.filepath);
 
 
-    let start_ingest = Instant::now();
-    let ps = ps_from_tsv_reader(opt.filepath)?;
-    let end_ingest = start_ingest.elapsed();
-    println!("ingest time: {}.{:03}",
-        end_ingest.as_secs(),
-        end_ingest.subsec_millis()
+    let ps = timeit!("ingest",
+        ps_from_tsv_reader(opt.filepath)?
     );
 
     println!("");
 
-    let start_rca = Instant::now();
-    {
-        let rca = ps.rca(&[2017], None)
-            .ok_or_else(|| format_err!("no rca for 2017?"))?;
-        println!("RCA test against simoes ps_calcs for 2017");
-        println!("nzl::0204, expect 149.962669: {:?}", rca.get("nzl", "0204")?);
-    }
-    let end_rca = start_rca.elapsed();
-    println!("time: {}.{:03}",
-        end_rca.as_secs(),
-        end_rca.subsec_millis()
+    timeit!("rca 1yr",
+        {
+            let rca = ps.rca(&[2017], None)
+                .ok_or_else(|| format_err!("no rca for 2017?"))?;
+            println!("RCA test against simoes ps_calcs for 2017");
+            println!("nzl::0204, expect 149.962669: {:?}", rca.get("nzl", "0204")?);
+        }
     );
 
     println!("");
 
-    let start_rca = Instant::now();
-    {
-        let rca = ps.rca(&[2015,2016,2017], None)
-            .ok_or_else(|| format_err!("no rca for 2015-2017?"))?;
-        println!("nzl::0204, 2015-2017: {}", rca.get("nzl", "0204")?);
-    }
-    let end_rca = start_rca.elapsed();
-    println!("time: {}.{:03}",
-        end_rca.as_secs(),
-        end_rca.subsec_millis()
+    timeit!("rca 3yr avg",
+        {
+            let rca = ps.rca(&[2015,2016,2017], None)
+                .ok_or_else(|| format_err!("no rca for 2015-2017?"))?;
+            println!("nzl::0204, 2015-2017: {}", rca.get("nzl", "0204")?);
+        }
+    );
+
+    println!("");
+
+    timeit!("rca 3yr cutoff 1.0",
+        {
+            let rca = ps.rca(&[2015,2016,2017], Some(1.0))
+                .ok_or_else(|| format_err!("no rca for 2015-2017?"))?;
+            println!("nzl::0204, 2015-2017: {}", rca.get("nzl", "0204")?);
+        }
     );
 
     println!("");

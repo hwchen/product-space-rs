@@ -7,6 +7,7 @@ pub use mcp::Mcp;
 mod rca;
 pub use rca::{
     apply_fair_share,
+    apply_fair_share_into,
     apply_rca,
     fair_share,
     rca,
@@ -36,33 +37,52 @@ pub struct ProductSpace {
 }
 
 impl ProductSpace {
-    // TODO Result and error handling for year range mistakes
+    /// if years not found, either returns None or silently skips
+    /// for aggregating, will either
+    /// for cutoff, rca(t) = 1 if rca(t-1) > cutoff and rca(t-2) > cutoff...
+    /// - otherwise just average
     pub fn rca(
         &self,
         years: &[u32],
         cutoff: Option<f64>,
         ) -> Option<Rca>
     {
-        let year_count = years.len();
+        if years.len() > 0 {
+            let zeros = DMatrix::from_element(
+                self.country_idx.len(),
+                self.product_idx.len(),
+                1.0,
+            );
 
-        if year_count > 1 {
-            let zeros = DMatrix::zeros(self.country_idx.len(), self.product_idx.len());
-            let agg_mcp = years.iter()
-                // in future, should return error if
-                // year not present? Or maybe not
-                .filter_map(|y| self.mcps.get(&y))
-                .fold(zeros, |sum, x| sum + x);
+            // for cutoff, rca(t) = 1 if rca(t-1) > cutoff and rca(t-2) > cutoff...
+            //
+            // else just avg the rca
+            let mut res = years.iter()
+                // silently removes missing years
+                .filter_map(|y| self.mcps.get(y))
+                .fold(zeros, |mut z, mcp| {
+                    let mut rca_matrix = rca(&mcp);
+                    if cutoff.is_some() {
+                        apply_fair_share_into(&mut rca_matrix, &mut z, cutoff);
+                    } else {
+                        // just average as default?
+                        // do the sum part here, divide at end
+                        z += rca_matrix;
+                    }
+                    z
+                });
 
-            let mut res = rca(&agg_mcp);
-            if cutoff.is_some() {
-                &mut apply_fair_share(&mut res, cutoff);
+            // avg if no cutoff
+            if cutoff.is_none() {
+                res.apply(|x| x / years.len() as f64)
             }
+
             Some(Rca {
                 country_idx: self.country_idx.clone(),
                 product_idx: self.product_idx.clone(),
                 m: res,
             })
-        } else if year_count == 1 {
+        } else if years.len() == 1 {
             // no extra allocation for mcp
 
             years.get(0)
@@ -70,7 +90,7 @@ impl ProductSpace {
                 .map(|mcp| {
                     let mut res = rca(&mcp);
                     if cutoff.is_some() {
-                        &mut apply_fair_share(&mut res, cutoff);
+                        apply_fair_share(&mut res, cutoff);
                     }
                     Rca {
                         country_idx: self.country_idx.clone(),
