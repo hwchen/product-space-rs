@@ -58,23 +58,28 @@ fn main() -> Result<(), Error> {
         println!("nzl::0204, {}: {}", year, rca.get("nzl", "0204")?);
     }
 
-    timeit!("density 3yr avg",
+    println!("");
+
+    timeit!("density 1yr cutoff 1.0",
         {
-            let rca = ps.density(&[2015,2016,2017], None)
-                .ok_or_else(|| format_err!("no rca for 2015-2017?"))?;
-            println!("nzl::0204, 2015-2017: {}", rca.get("nzl", "0204")?);
+            let density = ps.density(&[2017], Some(1.0))
+                .ok_or_else(|| format_err!("no rca for 2017?"))?;
+            println!("usa::0101, 2017: {:?}", density.get("usa", "0101")?);
         }
     );
 
     println!("");
 
-    timeit!("density 3yr cutoff 1.0",
-        {
-            let rca = ps.density(&[2015,2016,2017], Some(1.0))
-                .ok_or_else(|| format_err!("no rca for 2015-2017?"))?;
-            println!("nzl::0204, 2015-2017: {}", rca.get("nzl", "0204")?);
-        }
-    );
+//    timeit!("density 3yr cutoff 1.0",
+//        {
+//            let density = ps.density(&[2015,2016,2017], Some(1.0))
+//                .ok_or_else(|| format_err!("no rca for 2015-2017?"))?;
+//            println!("usa::1201, 2015-2017: {}", density.get("usa", "1201")?);
+//        }
+//    );
+//
+//    println!("");
+
 
     Ok(())
 }
@@ -159,6 +164,7 @@ pub fn ps_from_tsv_reader(filepath: PathBuf) -> Result<ProductSpace, Error> {
             country_idx,
             product_idx,
             mcps,
+            Some(1.0),
         )
     );
 

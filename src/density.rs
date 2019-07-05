@@ -58,6 +58,37 @@ mod tests {
 
         assert_eq!(density, expected);
     }
+
+    #[test]
+    fn test_density_0_1() {
+        println!("columns: product, rows: country");
+
+        let m = DMatrix::from_vec(2,3,vec![0.0, 1.0, 1.0, 0.0, 0.0, 1.0]);
+        println!("matrix:\n{}", m);
+
+        let rca = rca(&m);
+        println!("rca:\n{}", rca);
+
+        let proximity = proximity(&rca);
+        println!("proximity:\n{}", proximity);
+
+        let density = density(&rca, &proximity);
+        println!("density:\n{}", density);
+
+        let expected = DMatrix::from_vec(2,3,
+            vec![
+                0.0,
+                1.5,
+                3.0,
+                0.0,
+                0.0,
+                1.5,
+            ]
+        );
+        println!("expected:\n{}", expected);
+
+        assert_eq!(density, expected);
+    }
 }
 
 // expected from simoes

@@ -11,10 +11,11 @@ pub fn proximity(rca: &DMatrix<f64>) -> DMatrix<f64> {
     // mul/div is componentwise, not sweeping or otherwise
 
     // transpose matrix so row indexes are products
-    let rca_t = rca.transpose();
+    let mut rca_t = rca.transpose();
+    rca_t.apply(|x| if x.is_nan() { 0.0 } else { x });
 
     // product of rca_tranpose and rca transpose transpose
-    let numerator_intersection = rca_t * rca;
+    let numerator_intersection = &rca_t * rca_t.transpose();
 
     // kp0 is vector of the sum of rca per product
     // (simoes says it's vector of the number of munics with RCA in given product,
@@ -65,6 +66,37 @@ mod tests {
                 0.9793228211476318,
                 1.0037807318213265,
                 1.0103668261562997,
+            ]
+        );
+        println!("expected:\n{}", expected);
+
+        assert_eq!(proximity, expected);
+    }
+
+    #[test]
+    fn test_proximity_0_1() {
+        println!("columns: product, rows: country");
+
+        let m = DMatrix::from_vec(2,3,vec![0.0, 1.0, 1.0, 0.0, 0.0, 1.0]);
+        println!("matrix:\n{}", m);
+
+        let rca = rca(&m);
+        println!("rca:\n{}", rca);
+
+        let proximity = proximity(&rca);
+        println!("proximity:\n{}", proximity);
+
+        let expected = DMatrix::from_vec(3,3,
+            vec![
+                1.5,
+                0.0,
+                1.5,
+                0.0,
+                3.0,
+                0.0,
+                1.5,
+                0.0,
+                1.5,
             ]
         );
         println!("expected:\n{}", expected);

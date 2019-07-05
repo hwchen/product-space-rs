@@ -46,8 +46,9 @@ pub struct ProductSpace {
     product_idx: HashMap<String, usize>,
 
     #[allow(dead_code)]
-    mcps:                 HashMap<u32, DMatrix<f64>>,
+    mcps:                HashMap<u32, DMatrix<f64>>,
     rcas_by_year:        HashMap<u32, DMatrix<f64>>,
+    rcas_cutoff_by_year: HashMap<u32, DMatrix<f64>>,
     proximities_by_year: HashMap<u32, DMatrix<f64>>,
 }
 
@@ -118,8 +119,57 @@ impl ProductSpace {
                     if cutoff.is_some() {
                         apply_fair_share(&mut rca_matrix, cutoff);
                     }
-                    rca
+                    rca_matrix
                 })
+        } else {
+            None
+        }
+    }
+
+    /// for working with cutoff-on-init rca only
+    pub fn rca_cutoff(
+        &self,
+        years: &[u32],
+        ) -> Option<Rca>
+    {
+        self.rca_cutoff_matrix(years)
+            .map(|m| {
+                Rca {
+                    country_idx: self.country_idx.clone(),
+                    product_idx: self.product_idx.clone(),
+                    m,
+                }
+            })
+    }
+
+    fn rca_cutoff_matrix(
+        &self,
+        years: &[u32],
+        ) -> Option<DMatrix<f64>>
+    {
+        if years.len() > 1 {
+            let init_matrix = DMatrix::from_element(
+                self.country_idx.len(),
+                self.product_idx.len(),
+                1.0,
+            );
+
+            // for cutoff, rca(t) = 1 if rca(t-1) > cutoff and rca(t-2) > cutoff...
+            //
+            // else just avg the rca
+            let res = years.iter()
+                // silently removes missing years
+                .filter_map(|y| self.rcas_by_year.get(y))
+                .fold(init_matrix, |mut z, rca| {
+                    z = z.component_mul(&rca);
+                    z
+                });
+
+            Some(res)
+        } else if years.len() == 1 {
+            // no extra allocation for mcp
+            years.get(0)
+                .and_then(|y| self.rcas_cutoff_by_year.get(y))
                 .cloned()
         } else {
             None
@@ -217,18 +267,33 @@ impl ProductSpace {
     pub fn new(
         country_idx: HashMap<String, usize>,
         product_idx: HashMap<String, usize>,
-        mcps: HashMap<u32, DMatrix<f64>>
+        mcps: HashMap<u32, DMatrix<f64>>,
+        rca_cutoff: Option<f64>,
         ) -> Self
     {
         let rcas_by_year: HashMap<_,_> = mcps.iter()
             .map(|(year, mcp)| {
-                (*year, rca(&mcp))
+                let rca_matrix = rca(&mcp);
+                (*year, rca_matrix)
             })
             .collect();
 
-        let proximities_by_year: HashMap<_,_> = rcas_by_year.iter()
+        let rcas_cutoff_by_year: HashMap<_,_> = mcps.iter()
+            .map(|(year, mcp)| {
+                let mut rca_matrix = rca(&mcp);
+                apply_fair_share(&mut rca_matrix, rca_cutoff);
+
+                (*year, rca_matrix)
+            })
+            .collect();
+
+        let proximities_by_year: HashMap<_,_> = rcas_cutoff_by_year.iter()
             .map(|(year, rca)| {
-                (*year, proximity(&rca))
+                let mut prox = proximity(&rca);
+                // TODO check if this zeroing is ok
+                // This fixed the "everything is Nan issue
+                prox.apply(|x| if x.is_nan() { 0.0 } else { x });
+                (*year, prox)
             })
             .collect();
 
@@ -237,6 +302,7 @@ impl ProductSpace {
             product_idx,
             mcps,
             rcas_by_year,
+            rcas_cutoff_by_year,
             proximities_by_year,
         }
     }
@@ -304,6 +370,7 @@ mod test {
             [("a".to_string(),0usize), ("b".to_string(),1)].iter().cloned().collect(),
             [("01".to_string(),0usize), ("02".to_string(),1), ("03".to_string(),2)].iter().cloned().collect(),
             mcps,
+            Some(0.0),
         );
 
         let rca = ps.rca(&[2017], None).unwrap();
