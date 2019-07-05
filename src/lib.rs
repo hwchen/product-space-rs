@@ -44,7 +44,11 @@ pub use error::Error;
 pub struct ProductSpace {
     country_idx: HashMap<String, usize>,
     product_idx: HashMap<String, usize>,
-    mcps: HashMap<u32, DMatrix<f64>>,
+
+    #[allow(dead_code)]
+    mcps:                 HashMap<u32, DMatrix<f64>>,
+    rcas_by_year:        HashMap<u32, DMatrix<f64>>,
+    proximities_by_year: HashMap<u32, DMatrix<f64>>,
 }
 
 impl ProductSpace {
@@ -86,10 +90,9 @@ impl ProductSpace {
             // else just avg the rca
             let mut res = years.iter()
                 // silently removes missing years
-                .filter_map(|y| self.mcps.get(y))
-                .fold(init_matrix, |mut z, mcp| {
-                    let mut rca_matrix = rca(&mcp);
-
+                .filter_map(|y| self.rcas_by_year.get(y))
+                .fold(init_matrix, |mut z, rca| {
+                    let mut rca_matrix = rca.clone();
                     if cutoff.is_some() {
                         apply_fair_share_into(&mut rca_matrix, &mut z, cutoff);
                     } else {
@@ -109,14 +112,15 @@ impl ProductSpace {
         } else if years.len() == 1 {
             // no extra allocation for mcp
             years.get(0)
-                .and_then(|y| self.mcps.get(y))
-                .map(|mcp| {
-                    let mut res = rca(&mcp);
+                .and_then(|y| self.rcas_by_year.get(y))
+                .map(|rca| {
+                    let mut rca_matrix = rca.clone();
                     if cutoff.is_some() {
-                        apply_fair_share(&mut res, cutoff);
+                        apply_fair_share(&mut rca_matrix, cutoff);
                     }
-                    res
+                    rca
                 })
+                .cloned()
         } else {
             None
         }
@@ -147,16 +151,14 @@ impl ProductSpace {
     {
         if years.len() > 1 {
             let zeros = DMatrix::zeros(
-                self.country_idx.len(),
+                self.product_idx.len(),
                 self.product_idx.len(),
             );
 
             let mut res = years.iter()
                 // silently removes missing years
                 // TODO what happens when no years?
-                .filter_map(|y| self.mcps.get(y))
-                .map(|mcp| rca(&mcp))
-                .map(|rca| proximity(&rca))
+                .filter_map(|y| self.proximities_by_year.get(y))
                 .fold(zeros, |mut z, proximity_matrix| {
                     z += proximity_matrix;
                     z
@@ -168,9 +170,8 @@ impl ProductSpace {
         } else if years.len() == 1 {
             // no extra allocation for mcp
             years.get(0)
-                .and_then(|y| self.mcps.get(y))
-                .map(|mcp| rca(&mcp))
-                .map(|rca| proximity(&rca))
+                .and_then(|y| self.proximities_by_year.get(y))
+                .cloned()
         } else {
             None
         }
@@ -219,10 +220,24 @@ impl ProductSpace {
         mcps: HashMap<u32, DMatrix<f64>>
         ) -> Self
     {
+        let rcas_by_year: HashMap<_,_> = mcps.iter()
+            .map(|(year, mcp)| {
+                (*year, rca(&mcp))
+            })
+            .collect();
+
+        let proximities_by_year: HashMap<_,_> = rcas_by_year.iter()
+            .map(|(year, rca)| {
+                (*year, proximity(&rca))
+            })
+            .collect();
+
         Self {
             country_idx,
             product_idx,
             mcps,
+            rcas_by_year,
+            proximities_by_year,
         }
     }
 }
@@ -285,11 +300,11 @@ mod test {
         let mut mcps = HashMap::new();
         mcps.insert(2017, vals);
 
-        let ps = ProductSpace {
-            country_idx: [("a".to_string(),0usize), ("b".to_string(),1)].iter().cloned().collect(),
-            product_idx: [("01".to_string(),0usize), ("02".to_string(),1), ("03".to_string(),2)].iter().cloned().collect(),
+        let ps = ProductSpace::new(
+            [("a".to_string(),0usize), ("b".to_string(),1)].iter().cloned().collect(),
+            [("01".to_string(),0usize), ("02".to_string(),1), ("03".to_string(),2)].iter().cloned().collect(),
             mcps,
-        };
+        );
 
         let rca = ps.rca(&[2017], None).unwrap();
 
