@@ -34,8 +34,13 @@ pub use error::Error;
 // each filtered country list (e.g. by population) would be another product space?
 // instead of trying to do that filtering dynamically.
 //
-// TODO This lets us cache rca and proximity by year, and only have to calculate density on
-// the fly depending on how many years are aggregated for smoothing
+// TODO This lets us cache rca and proximity by year, and only have to calculate density on the fly depending on how many years are aggregated for smoothing
+//
+// TODO tests for density and proximity
+//
+// TODO separate module for smoothing fns, and then let user choose which
+// smoothing so use (rca binary, averaging, etc) over an already-calculated
+// set of matrixies.
 pub struct ProductSpace {
     country_idx: HashMap<String, usize>,
     product_idx: HashMap<String, usize>,
@@ -170,10 +175,50 @@ impl ProductSpace {
             None
         }
     }
+
+    pub fn density(
+        &self,
+        years: &[u32],
+        rca_cutoff: Option<f64>,
+        ) -> Option<Density>
+    {
+        self.density_matrix(years, rca_cutoff)
+            .map(|m| {
+                Density {
+                    country_idx: self.country_idx.clone(),
+                    product_idx: self.product_idx.clone(),
+                    m,
+                }
+            })
+    }
+
+    pub fn density_matrix(
+        &self,
+        years: &[u32],
+        rca_cutoff: Option<f64>,
+        ) -> Option<DMatrix<f64>>
+    {
+        let rca = self.rca_matrix(years, rca_cutoff);
+        let proximity = self.proximity_matrix(years);
+
+        if rca.is_some() && proximity.is_some() {
+            let rca = rca.unwrap();
+            let proximity = proximity.unwrap();
+
+            Some(density(&rca, &proximity))
+        } else {
+            None
+        }
+    }
 }
 
 impl ProductSpace {
-    pub fn new(country_idx: HashMap<String, usize>, product_idx: HashMap<String, usize>, mcps: HashMap<u32, DMatrix<f64>>) -> Self {
+    pub fn new(
+        country_idx: HashMap<String, usize>,
+        product_idx: HashMap<String, usize>,
+        mcps: HashMap<u32, DMatrix<f64>>
+        ) -> Self
+    {
         Self {
             country_idx,
             product_idx,
@@ -207,6 +252,25 @@ impl Mcp for Rca {
 pub struct Proximity {
     product_idx: HashMap<String, usize>,
     m: DMatrix<f64>,
+}
+
+// TODO put indexes in Arc to avoid copying?
+pub struct Density {
+    country_idx: HashMap<String, usize>,
+    product_idx: HashMap<String, usize>,
+    m: DMatrix<f64>,
+}
+
+impl Mcp for Density {
+    fn matrix(&self) -> &DMatrix<f64> {
+        &self.m
+    }
+    fn country_index(&self) -> &HashMap<String, usize> {
+        &self.country_idx
+    }
+    fn product_index(&self) -> &HashMap<String, usize> {
+        &self.product_idx
+    }
 }
 
 
