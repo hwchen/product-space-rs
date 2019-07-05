@@ -30,6 +30,12 @@ pub use error::Error;
 
 // Currently just country and product.
 // May make this more general in the future
+//
+// each filtered country list (e.g. by population) would be another product space?
+// instead of trying to do that filtering dynamically.
+//
+// TODO This lets us cache rca and proximity by year, and only have to calculate density on
+// the fly depending on how many years are aggregated for smoothing
 pub struct ProductSpace {
     country_idx: HashMap<String, usize>,
     product_idx: HashMap<String, usize>,
