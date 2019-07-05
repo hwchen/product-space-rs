@@ -64,7 +64,7 @@ impl ProductSpace {
         ) -> Option<DMatrix<f64>>
     {
         if years.len() > 1 {
-            let zeros = DMatrix::from_element(
+            let init_matrix = DMatrix::from_element(
                 self.country_idx.len(),
                 self.product_idx.len(),
                 1.0,
@@ -76,8 +76,9 @@ impl ProductSpace {
             let mut res = years.iter()
                 // silently removes missing years
                 .filter_map(|y| self.mcps.get(y))
-                .fold(zeros, |mut z, mcp| {
+                .fold(init_matrix, |mut z, mcp| {
                     let mut rca_matrix = rca(&mcp);
+
                     if cutoff.is_some() {
                         apply_fair_share_into(&mut rca_matrix, &mut z, cutoff);
                     } else {
@@ -105,6 +106,60 @@ impl ProductSpace {
                     }
                     res
                 })
+        } else {
+            None
+        }
+    }
+
+    /// if years not found, either returns None or silently skips
+    /// for aggregating, will either
+    /// for cutoff, rca(t) = 1 if rca(t-1) > cutoff and rca(t-2) > cutoff...
+    /// - otherwise just average
+    pub fn proximity(
+        &self,
+        years: &[u32],
+        ) -> Option<Proximity>
+    {
+        self.proximity_matrix(years)
+            .map(|m| {
+                Proximity {
+                    product_idx: self.product_idx.clone(),
+                    m,
+                }
+            })
+    }
+
+    fn proximity_matrix(
+        &self,
+        years: &[u32],
+        ) -> Option<DMatrix<f64>>
+    {
+        if years.len() > 1 {
+            let zeros = DMatrix::zeros(
+                self.country_idx.len(),
+                self.product_idx.len(),
+            );
+
+            let mut res = years.iter()
+                // silently removes missing years
+                // TODO what happens when no years?
+                .filter_map(|y| self.mcps.get(y))
+                .map(|mcp| rca(&mcp))
+                .map(|rca| proximity(&rca))
+                .fold(zeros, |mut z, proximity_matrix| {
+                    z += proximity_matrix;
+                    z
+                });
+
+            res.apply(|x| x / years.len() as f64);
+
+            Some(res)
+        } else if years.len() == 1 {
+            // no extra allocation for mcp
+            years.get(0)
+                .and_then(|y| self.mcps.get(y))
+                .map(|mcp| rca(&mcp))
+                .map(|rca| proximity(&rca))
         } else {
             None
         }
@@ -139,6 +194,15 @@ impl Mcp for Rca {
         &self.product_idx
     }
 }
+
+// TODO put indexes in Arc to avoid copying?
+// TODO figure out how this calc shown publicly.
+#[allow(dead_code)]
+pub struct Proximity {
+    product_idx: HashMap<String, usize>,
+    m: DMatrix<f64>,
+}
+
 
 #[cfg(test)]
 mod test {
