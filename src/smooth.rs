@@ -24,16 +24,16 @@ mod test {
     #[test]
     fn test_avg() {
         let matrixes = [
-            DMatrix::from_element(2,2,1.0),
-            DMatrix::from_element(2,2,2.0),
-            DMatrix::from_element(2,2,3.0),
-            DMatrix::from_element(2,2,4.0),
-            DMatrix::from_element(2,2,5.0),
+            DMatrix::from_vec(2,2,vec![1.0,5.0,3.0,8.0]),
+            DMatrix::from_vec(2,2,vec![2.0,3.0,4.0,5.0]),
+            DMatrix::from_vec(2,2,vec![3.0,4.0,5.0,6.0]),
+            DMatrix::from_vec(2,2,vec![4.0,2.0,6.0,9.0]),
+            DMatrix::from_vec(2,2,vec![5.0,6.0,7.0,2.0]),
         ];
 
         let my_avg = avg(matrixes.iter(), 2, 5);
 
-        let expected = DMatrix::from_element(2,2,3.0);
+        let expected = DMatrix::from_vec(2,2,vec![3.0,4.0,5.0,6.0]);
 
         assert_eq!(my_avg, expected);
     }
