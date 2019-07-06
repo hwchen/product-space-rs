@@ -21,7 +21,7 @@ fn main() -> Result<(), Error> {
 
     println!("");
 
-    timeit!("rca 1yr",
+    timeit!("rca 1yr test",
         {
             let rca = ps.rca(&[2017], None)
                 .ok_or_else(|| format_err!("no rca for 2017?"))?;
@@ -30,13 +30,13 @@ fn main() -> Result<(), Error> {
         }
     );
 
-    println!("");
+    println!("\n## usa::0101 rca\n");
 
-    timeit!("rca 3yr avg",
-        {
-            let rca = ps.rca(&[2015,2016,2017], None)
-                .ok_or_else(|| format_err!("no rca for 2015-2017?"))?;
-            println!("nzl::0204, 2015-2017: {}", rca.get("nzl", "0204")?);
+    timeit!("rca 1yr no cutoff 1.0, x3",
+        for year in 2015..=2017 {
+            let rca = ps.rca(&[year as u32], None)
+                .ok_or_else(|| format_err!("no rca for year"))?;
+            println!("usa::0101, {}: {}", year, rca.get("usa", "0101")?);
         }
     );
 
@@ -46,39 +46,31 @@ fn main() -> Result<(), Error> {
         {
             let rca = ps.rca(&[2015,2016,2017], Some(1.0))
                 .ok_or_else(|| format_err!("no rca for 2015-2017?"))?;
-            println!("nzl::0204, 2015-2017: {}", rca.get("nzl", "0204")?);
+            println!("usa::0101, 2015-2017: {}", rca.get("usa", "0101")?);
         }
     );
 
-    println!("");
+    println!("\n## usa::0101 density\n");
 
-    for year in 2015..=2017 {
-        let rca = ps.rca(&[year as u32], None)
-            .ok_or_else(|| format_err!("no rca for year"))?;
-        println!("nzl::0204, {}: {}", year, rca.get("nzl", "0204")?);
-    }
-
-    println!("");
-
-    timeit!("density 1yr cutoff 1.0",
-        {
-            let density = ps.density(&[2017], Some(1.0))
+    timeit!("density 1yr cutoff 1.0, x3",
+        for year in 2015..=2017 {
+            let density = ps.density(&[year], Some(1.0))
                 .ok_or_else(|| format_err!("no rca for 2017?"))?;
-            println!("usa::0101, 2017: {:?}", density.get("usa", "0101")?);
+            println!("usa::0101, {}: {:?}", year, density.get("usa", "0101")?);
         }
     );
 
     println!("");
 
-//    timeit!("density 3yr cutoff 1.0",
-//        {
-//            let density = ps.density(&[2015,2016,2017], Some(1.0))
-//                .ok_or_else(|| format_err!("no rca for 2015-2017?"))?;
-//            println!("usa::1201, 2015-2017: {}", density.get("usa", "1201")?);
-//        }
-//    );
-//
-//    println!("");
+    timeit!("density 3yr cutoff 1.0",
+        {
+            let density = ps.density(&[2015,2016,2017], Some(1.0))
+                .ok_or_else(|| format_err!("no rca for 2015-2017?"))?;
+            println!("usa::0101, 2015-2017: {}", density.get("usa", "0101")?);
+        }
+    );
+
+    println!("");
 
 
     Ok(())

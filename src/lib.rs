@@ -28,6 +28,8 @@ pub use complexity::complexity;
 mod error;
 pub use error::Error;
 
+mod smooth;
+
 // Currently just country and product.
 // May make this more general in the future
 //
@@ -200,21 +202,12 @@ impl ProductSpace {
         ) -> Option<DMatrix<f64>>
     {
         if years.len() > 1 {
-            let zeros = DMatrix::zeros(
-                self.product_idx.len(),
-                self.product_idx.len(),
-            );
-
-            let mut res = years.iter()
+            let proximities = years.iter()
                 // silently removes missing years
                 // TODO what happens when no years?
-                .filter_map(|y| self.proximities_by_year.get(y))
-                .fold(zeros, |mut z, proximity_matrix| {
-                    z += proximity_matrix;
-                    z
-                });
+                .filter_map(|y| self.proximities_by_year.get(y));
 
-            res.apply(|x| x / years.len() as f64);
+            let res = smooth::avg(proximities, self.product_idx.len(), years.len());
 
             Some(res)
         } else if years.len() == 1 {
